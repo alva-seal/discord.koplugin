@@ -1,6 +1,6 @@
 # Telegram Highlights Plugin for KOReader
 
-Send book highlights from KOReader to a Telegram bot (@bookshotsbot) with ease. Select text or use existing highlights, then send or save-and-send to the bot.
+Send book highlights from KOReader to a Telegram bot [@bookshotsbot](https://t.me/bookshotsbot) with ease. Select text or use existing highlights, then send or save-and-send to the bot.
 
 ## Features
 
