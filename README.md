@@ -11,7 +11,7 @@ Send book highlights from KOReader to a Telegram bot [@bookshotsbot](https://t.m
 ## What You Need
 
 - KOReader on your e-reader.
-- Telegram account.
+- Telegram account on your phone or pc
 - Wi-Fi for sending highlights.
 
 ## Install
