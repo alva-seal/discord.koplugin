@@ -37,6 +37,15 @@ Send book highlights from KOReader to a Telegram bot [@bookshotsbot](https://t.m
 
 ![Alt text](./images/lao.jpg)
 
+## About the Bot
+
+- The bot is hosted on Deno Deploy and uses deno key value store to save and retrieve user ids and preferences
+
+## Todo
+
+- Add cool customizations for the user
+- Gracefully handle languages like Arabic that are not supported by og-image
+
 ---
 
 more updates and improvements coming. you can join my telegram channel to stay updated [@willtocode](https://t.me/willtocode)
