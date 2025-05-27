@@ -10,6 +10,7 @@ local _ = require("gettext")
 local T = require("ffi/util").template
 local functions = require("functions")
 local InfoMessage = require("ui/widget/infomessage")
+local util         = require("util")
 
 local function sendBulkBookmarksToBot(self, items, wifi_was_turned_on)
     if not items or #items == 0 then
@@ -19,7 +20,10 @@ local function sendBulkBookmarksToBot(self, items, wifi_was_turned_on)
 
     wifi_was_turned_on = wifi_was_turned_on or false
 
-    local title = self.ui.doc_props and self.ui.doc_props.title or self.ui.document:getFileName()
+    local file_path = self.ui.document.file  
+    local path, filename = util.splitFilePathName(file_path)
+
+    local title = self.ui.doc_props and self.ui.doc_props.title or filename or _("Unknown Book")
     local author = self.ui.doc_props and self.ui.doc_props.authors or _("Unknown Author")
     local verification_code = self.verification_code:upper()
 

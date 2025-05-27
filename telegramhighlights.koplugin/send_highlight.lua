@@ -59,7 +59,9 @@ local function sendHighlightToBot(self, instance, was_wifi_turned_on)
 
     -- 3. Prepare payload
     text = util.cleanupSelectedText(text)
-    local title = self.ui.doc_props and self.ui.doc_props.title or self.ui.document:getFileName()
+    local file_path = self.ui.document.file  
+    local path, filename = util.splitFilePathName(file_path)
+    local title = self.ui.doc_props and self.ui.doc_props.title or filename or _("Unknown Book")
     local author = self.ui.doc_props and self.ui.doc_props.authors or _("Unknown Author")
     local payload = {
         code = code,
