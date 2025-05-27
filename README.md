@@ -1,12 +1,19 @@
 # Telegram Highlights Plugin for KOReader
 
-Send book highlights from KOReader to a Telegram bot [@bookshotsbot](https://t.me/bookshotsbot) with ease. Select text or use existing highlights, then send or save-and-send to the bot.
+Send book highlights and screenshots from KOReader to a Telegram bot [@bookshotsbot](https://t.me/bookshotsbot) with ease. Select text or use existing highlights, then send or save-and-send to the bot.
 
 ## Features
 
 - Send selected text or existing highlights to @bookshotsbot.
-- **Send to Bot**: Sends text and clears selection.
-- **Save & Send**: Saves highlight, sends to bot, keeps selection.
+- **Send to Bot**: Sends text with image quote.
+- **Save & Send**: Saves the highlight and sends image quote.
+- **Upload all your bookmarks of a book to cloud**
+  - Bulk Send all your bookmarks at once
+  - Delete duplicates on the miniapp with one click
+  - Send bookmarks individually
+- **Auto turn on and turn off wifi after sending (might not work on android based e-readers)**
+  - Toggle this feature in the plugins setting page
+- **Send Screenshots to Bot**
 
 ## What You Need
 
@@ -30,22 +37,38 @@ Send book highlights from KOReader to a Telegram bot [@bookshotsbot](https://t.m
    - **New Text**: Select text, open highlight menu, pick "Send to Bot" or "Save Highlight and Send to Bot".
    - **Existing Highlight**: Tap a highlight, hit the three dots, choose "Send to Bot" or "Save & Send".
 3. **Check Telegram**: Highlights appear in your @bookshotsbot chat with book title and author.
+4. **How to Bulk Send your Bookmarks**
+   - Open the Book that has the bookmarks you need
+   - Goto the main menu or the bookmark icon
+   - Bookmarks
+   - Click the menu icon on the top left
+   - Click Send all to Bot
+5. **How to Send individual Bookmarks**
+   - Navigate to the bookmarks page
+   - Long press the bookmark you want to send
+   - Then click the send to bot button
+6. **Send Screenshots to bot**
+   - Swipe diagonally on your kindle
+   - On the dialog, click send to bot
+7. **Customize Quote Images**
+   - Goto miniapp, press on customize button on image quote
+   - Launch the miniapp by pressing the Highlights button, then press the image icon the the quote you want to customize
+   - You can choose colors, Unsplash presets, or search any image from Unsplash that you want to use as a background image
 
 ## Highlight examples
 
-![Alt text](./images/david.jpg)
+- Raw highlight from bot
 
-![Alt text](./images/lao.jpg)
+  - ![Alt text](./images/lao.png)
+
+- Customized with in the miniapp
+
+  - ![Alt text](./images/lao-custom.png)
 
 ## About the Bot
 
 - The bot is hosted on Deno Deploy and uses deno key value store to save and retrieve user ids and preferences
 
-## Todo
-
-- Add cool customizations for the user
-- Gracefully handle languages like Arabic that are not supported by og-image
-
 ---
 
-more updates and improvements coming. you can join my telegram channel to stay updated [@willtocode](https://t.me/willtocode)
+For feature requests or any problems you can create issues or message me on Telegram [@mikxyas](https://t.me/mikxyas)
