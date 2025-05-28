@@ -7,68 +7,84 @@ Send book highlights and screenshots from KOReader to a Telegram bot [@bookshots
 - Send selected text or existing highlights to @bookshotsbot.
 - **Send to Bot**: Sends text with image quote.
 - **Save & Send**: Saves the highlight and sends image quote.
-- **Upload all your bookmarks of a book to cloud**
-  - Bulk Send all your bookmarks at once
+- **Upload all your bookmarks of a book to cloud**:
+  - Bulk send all your bookmarks at once
   - Delete duplicates on the miniapp with one click
   - Send bookmarks individually
-- **Auto turn on and turn off wifi after sending (might not work on android based e-readers)**
-  - Toggle this feature in the plugins setting page
-- **Send Screenshots to Bot**
+- **Auto turn on and turn off Wi-Fi after sending** (may not work on Android-based e-readers):
+  - Toggle this feature in the plugin’s settings
+- **Send screenshots to bot**
 
-## What You Need
+## Requirements
 
-- KOReader on your e-reader.
-- Telegram account on your phone or pc
-- Wi-Fi for sending highlights.
+- KOReader on your e-reader
+- Telegram account
+- Wi-Fi for sending highlights
 
 ## Install
 
-1. Download the plugin:
-   - [Click Here](https://github.com/0xmiki/telegramhighlights.koplugin/archive/refs/heads/main.zip) to download the zip of this repo
-2. Unzip the folder, open it and then copy the `telegramhighlights.koplugin` folder to KOReader’s plugins folder:
-3. Restart KOReader. Look for "Telegram Highlights" in the last page of the "Tools" menu.
+1. Download the latest plugin release:
+
+   👉 [Download from Releases](https://github.com/0xmiki/telegramhighlights.koplugin/releases/latest)
+
+2. Unzip the downloaded `telegramhighlights.koplugin.zip` — inside you will find a folder named `telegramhighlights.koplugin`.
+
+3. Copy the `telegramhighlights.koplugin` folder to KOReader’s `plugins` directory.
+
+4. Restart KOReader. The plugin will appear under **Tools > Telegram Highlights**.
 
 ## How to Use
 
-1. **Get a Code**:
-   - Chat with @bookshotsbot on Telegram to get a verification code.
-   - In KOReader, go `Tools > Telegram Highlights > Set verification code`, enter it, and save.
-2. **Send Highlights**:
-   - **New Text**: Select text, open highlight menu, pick "Send to Bot" or "Save Highlight and Send to Bot".
-   - **Existing Highlight**: Tap a highlight, hit the three dots, choose "Send to Bot" or "Save & Send".
-3. **Check Telegram**: Highlights appear in your @bookshotsbot chat with book title and author.
-4. **How to Bulk Send your Bookmarks**
-   - Open the Book that has the bookmarks you need
-   - Goto the main menu or the bookmark icon
-   - Bookmarks
-   - Click the menu icon on the top left
-   - Click Send all to Bot
-5. **How to Send individual Bookmarks**
-   - Navigate to the bookmarks page
-   - Long press the bookmark you want to send
-   - Then click the send to bot button
-6. **Send Screenshots to bot**
-   - Swipe diagonally on your kindle
-   - On the dialog, click send to bot
-7. **Customize Quote Images**
-   - Goto miniapp, press on customize button on image quote
-   - Launch the miniapp by pressing the Highlights button, then press the image icon the the quote you want to customize
-   - You can choose colors, Unsplash presets, or search any image from Unsplash that you want to use as a background image
+### 1. Get a Code
 
-## Highlight examples
+- Chat with [@bookshotsbot](https://t.me/bookshotsbot) on Telegram to receive a verification code.
+- In KOReader: go to `Tools > Telegram Highlights > Set verification code`, enter your code, and save.
 
-- Raw highlight from bot
+### 2. Send Highlights
 
-  - ![Alt text](./images/lao.png)
+- **New Text**: Select text → open highlight menu → choose **Send to Bot** or **Save & Send**.
+- **Existing Highlight**: Tap a highlight → press the three dots → choose **Send to Bot** or **Save & Send**.
 
-- Customized with in the miniapp
+### 3. Bulk Send Bookmarks
 
-  - ![Alt text](./images/lao-custom.png)
+- Open the book with the bookmarks
+- Go to the bookmark icon or main menu → Bookmarks
+- Tap the menu icon (top-left) → **Send all to Bot**
+
+### 4. Send Individual Bookmarks
+
+- Open the bookmarks page
+- Long-press a bookmark → tap **Send to Bot**
+
+### 5. Send Screenshots
+
+- Swipe diagonally on your Kindle
+- In the dialog, tap **Send to Bot**
+
+### 6. Customize Quote Images
+
+- In the miniapp, tap the **Customize** button under the quote image
+- Launch the miniapp from the **Highlights** screen → tap the image icon under the quote
+- Customize:
+  - Colors
+  - Unsplash presets
+  - Search for any Unsplash image as background
+
+## Examples
+
+**Raw Highlight:**
+
+![Raw](./images/lao.png)
+
+**Customized in Miniapp:**
+
+![Custom](./images/lao-custom.png)
 
 ## About the Bot
 
-- The bot is hosted on Deno Deploy and uses deno key value store to save and retrieve user ids and preferences
+The bot is hosted on [Deno Deploy](https://deno.com/deploy) and uses Deno’s key-value store to manage user preferences and IDs.
 
 ---
 
-For feature requests or any problems you can create issues or message me on Telegram [@mikxyas](https://t.me/mikxyas)
+Have questions or feature requests?  
+Feel free to open an issue or message the author on Telegram: [@mikxyas](https://t.me/mikxyas)
