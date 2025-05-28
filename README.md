@@ -87,4 +87,4 @@ The bot is hosted on [Deno Deploy](https://deno.com/deploy) and uses Deno’s ke
 ---
 
 Have questions or feature requests?  
-Feel free to open an issue or message the author on Telegram: [@mikxyas](https://t.me/mikxyas)
+Feel free to open an issue or message the author on Telegram: [@mikxyas](https://t.me/mikxyas).
