@@ -12,36 +12,26 @@ local _ = require("gettext")
 local T = require("ffi/util").template
 local functions = require("functions")
 
-local function sendHighlightToBot(self, instance, was_wifi_turned_on)
-   
-    was_wifi_turned_on = was_wifi_turned_on or false
+local MAX_AUTO_RETRIES = 2 -- Total 3 attempts: 1 initial + 2 retries
 
+local function sendHighlightToBot(self, instance, wifi_was_turned_on, _current_attempt)
+    _current_attempt = _current_attempt or 1
+    wifi_was_turned_on = wifi_was_turned_on or false
 
-    -- Helper function to clear selection and refresh
-    local function clearSelection()
-        if self.ui and self.ui.document and type(self.ui.document.clearSelection) == "function" then
-            self.ui.document:clearSelection()
-        else
-            logger.warn("clearSelection: self.ui.document.clearSelection is not available or not a function.")
-        end
-     end
-    -- 1. Determine the source of the text (new selection or existing highlight)
     local text
     local is_existing_highlight = instance.selected_link and instance.selected_link.note
     if is_existing_highlight then
         text = instance.selected_link.note
-        -- logger.info("Send to Bot: Using text from existing highlight")
     elseif instance.selected_text and instance.selected_text.text and instance.selected_text.text ~= "" then
         text = instance.selected_text.text
-        -- logger.info("Send to Bot: Using text from new selection")
     else
         logger.warn("Send to Bot: No text available.")
         UIManager:show(Notification:new { text = _("No text available.") })
-        clearSelection()
+
+        functions.handleWifiTurnOff( wifi_was_turned_on)
         return
     end
 
-    -- 2. Get the verification code
     local code = self.verification_code
     if code == "" then
         logger.warn("Send to Bot: Verification code is not set!")
@@ -50,16 +40,14 @@ local function sendHighlightToBot(self, instance, was_wifi_turned_on)
             text = _("Please set your verification code in the Telegram Highlights settings menu."),
             timeout = 7
         })
-        clearSelection()
+
+        functions.handleWifiTurnOff( wifi_was_turned_on)
         return
     end
-
-    -- Make sure code is uppercase if the server expects it
     code = code:upper()
 
-    -- 3. Prepare payload
     text = util.cleanupSelectedText(text)
-    local file_path = self.ui.document.file  
+    local file_path = self.ui.document.file
     local path, filename = util.splitFilePathName(file_path)
     local title = self.ui.doc_props and self.ui.doc_props.title or filename or _("Unknown Book")
     local author = self.ui.doc_props and self.ui.doc_props.authors or _("Unknown Author")
@@ -70,54 +58,40 @@ local function sendHighlightToBot(self, instance, was_wifi_turned_on)
         author = author,
     }
 
-    local ok, json_payload = pcall(JSON.encode, payload)
-    if not ok then
+    local ok_json, json_payload = pcall(JSON.encode, payload)
+    if not ok_json then
         logger.warn("Send to Bot: Error encoding JSON payload:", json_payload)
         UIManager:show(InfoMessage:new { title = _("Send to Bot Error"), text = _("Failed to prepare data."), timeout = 5 })
-        clearSelection()
+
+        functions.handleWifiTurnOff( wifi_was_turned_on)
         return
     end
 
-    -- 4. Check network and perform request
-    local function performSendRequest()
-    
-        UIManager:close(instance.highlight_dialog)
-        -- UIManager:show(Notification:new { text = _("Sending!"), timeout = 1.5 })
-    
-        local _showProgress = function()
-            if not instance._progress_widget then
-                instance._progress_widget = InfoMessage:new { text = _("Sending highlight to bot..."), timeout = 0 }
-                UIManager:show(instance._progress_widget)
-            end
-        end
-        local _hideProgress = function()
-            if instance._progress_widget then
-                UIManager:close(instance._progress_widget)
-                instance._progress_widget = nil
-            end
-        end
+    local function close_instance() 
+        instance:onClose()
+    end
+
+    local function actual_perform_send_request()
+        -- avoid calling on retries
+
 
         if not NetworkMgr:isConnected() then
-            _hideProgress()
             logger.info("Send to Bot: Network not connected. Prompting for Wi-Fi.")
             NetworkMgr:promptWifiOn(function()
-                -- logger.info("Send to Bot: Wi-Fi possibly enabled, retrying send...")
-                sendHighlightToBot(self, instance, true)
+                sendHighlightToBot(self, instance, true, 1) -- Start fresh
             end, _("Connect to Wi-Fi to send the highlight to the bot?"))
             return
         end
 
-        -- UIManager:show(Notification:new {
-        --     text = _("Sending Highlight"),
-        --     timeout = 2,
-        -- })
-        _showProgress()
+        if _current_attempt == 1 then
+            UIManager:close(instance.highlight_dialog) -- Close dialog once action starts    
+        end
 
-        -- Perform the HTTP POST request in a coroutine
-        local co = coroutine.create(function(handler_func)
+
+        local co = coroutine.create(function(handler_func_co)
             local request_url = self.BOT_SERVER_URL
             local timeout = 15
-            local success, response_body, response_code
+            local success_req, response_body_req, response_code_req
 
             local sink = {}
             socketutil:set_timeout(timeout)
@@ -137,81 +111,116 @@ local function sendHighlightToBot(self, instance, was_wifi_turned_on)
             socketutil:reset_timeout()
 
             if not ok_req then
-                success = false
-                response_body = "Network request failed: " .. tostring(req_res_or_err)
-                response_code = -1
+                success_req = false
+                response_body_req = "Network request failed: " .. tostring(req_res_or_err)
+                response_code_req = -1
                 logger.warn("Send to Bot: http.request pcall failed:", req_res_or_err)
             else
+                response_body_req = table.concat(sink)
                 if type(req_res_or_err) == "number" then
-                    response_code = req_res_or_err
+                    response_code_req = req_res_or_err
                 elseif type(req_res_or_err) == "table" and type(req_res_or_err[1]) == "number" then
-                    response_code = req_res_or_err[1]
+                    response_code_req = req_res_or_err[1]
                 else
-                    response_code = nil
+                    response_code_req = nil
                 end
-                response_body = table.concat(sink)
-                local json_ok, json_response = pcall(JSON.decode, response_body)
+
+                local json_ok, json_response = pcall(JSON.decode, response_body_req)
                 if json_ok and json_response and type(json_response) == "table" and json_response.success == true then
-                    success = true
-                    response_code = response_code or 200
+                    success_req = true
+                    response_code_req = response_code_req or 200
                 else
-                    success = false
+                    success_req = false
                     if json_ok and json_response and type(json_response) == "table" and json_response.error then
-                        response_body = json_response.error
+                        response_body_req = json_response.error
+                    elseif not json_ok then
+                         logger.warn("Send to Bot: Failed to decode JSON response:", response_body_req)
                     end
                 end
             end
 
             local runner = coroutine.running()
             if runner and coroutine.status(runner) == "suspended" then
-                coroutine.resume(runner, success, response_body, response_code)
+                coroutine.resume(runner, success_req, response_body_req, response_code_req)
             else
                 logger.warn("Send to Bot: Coroutine not in suspended state, calling handler directly.")
-                handler_func(success, response_body, response_code)
+                handler_func_co(success_req, response_body_req, response_code_req)
             end
         end)
 
-        local function handleResult(success, body, code)
-            _hideProgress()
-            if success then
+        local function handleResult(success_res, body_res, code_res)
+
+            if success_res then
                 UIManager:show(Notification:new { text = _("Highlight sent successfully!"), timeout = 2 })
-                clearSelection()
+                functions.handleWifiTurnOff( wifi_was_turned_on)
+                instance:onClose()
             else
-                local err_title = _("Send to Bot Error")
-                local err_text
-                logger.warn("Send to Bot: Failed. Code:", code, "Body:", body)
-                if code == 403 then
-                    err_text = _("Server rejected the request: Invalid verification code.") ..
-                        "\n\n" .. _("Check your verification code in the settings menu.")
-                elseif code == 400 then
-                    err_text = _("Server reported bad data. Check bot/server logs.") ..
-                        "\n(URL: " .. self.BOT_SERVER_URL .. ")"
-                elseif code == 500 then
-                    err_text = _("Server encountered an internal error. Please try again later.") ..
-                        "\n(URL: " .. self.BOT_SERVER_URL .. ")"
-                elseif code == -1 or not code then
-                    err_text = _("Network error: ") .. tostring(body)
+                logger.warn("Send Highlight: Failed. Attempt:", _current_attempt, "Code:", code_res, "Body:", body_res)
+                if _current_attempt <= MAX_AUTO_RETRIES then
+                    logger.info("Send Highlight: Scheduling automatic retry", _current_attempt + 1)
+                    UIManager:scheduleIn(3, function()
+                        sendHighlightToBot(self, instance, wifi_was_turned_on, _current_attempt + 1)
+                    end)
                 else
-                    err_text = T(_("Server returned error code: %1"), code) .. "\n(URL: " .. self.BOT_SERVER_URL .. ")"
+                    logger.warn("Send Highlight: Max auto retries reached. Showing dialog.")
+                    local dialog_title = _("Sending Error")
+                    local dialog_message
+
+                    if code_res == -1 then -- Network error (pcall failed or explicitly set)
+                        dialog_title = _("Network Error")
+                        local pcall_error_message = body_res and string.gsub(tostring(body_res), "Network request failed: ", "") or _("Unknown network issue.")
+                        dialog_message = _("Failed to send highlight due to a network issue after multiple attempts. Would you like to retry?")
+                        if pcall_error_message ~= "" then
+                            dialog_message = dialog_message .. "\n\n" .. _("Details: ") .. pcall_error_message
+                        end
+                    elseif code_res == 403 then
+                        dialog_title = _("Authorization Error")
+                        dialog_message = _("Server rejected the request: Invalid verification code.") ..
+                                         "\n\n" .. _("Please check your verification code in the settings menu.") ..
+                                         "\n\n" .. _("Would you like to retry?")
+                    elseif code_res == 400 then
+                        dialog_title = _("Bad Request")
+                        dialog_message = T(_("Server reported bad data (Error %1).", code_res)) ..
+                                         "\n" .. _("This could be due to an issue with the data sent or a server-side problem.") ..
+                                         "\nError: " .. tostring(body_res) ..
+                                         "\n(URL: " .. self.BOT_SERVER_URL .. ")" ..
+                                         "\n\n" .. _("Would you like to retry?")
+                    elseif code_res == 500 then
+                        dialog_title = _("Server Error")
+                        dialog_message = T(_("Server encountered an internal error (Error %1). Please try again later.", code_res)) ..
+                                         "\n(URL: " .. self.BOT_SERVER_URL .. ")" ..
+                                         "\n\n" .. _("Would you like to retry?")
+                    else
+                        dialog_title = _("Sending Error")
+                        dialog_message = T(_("Failed to send highlight. Server returned error code: %1 after multiple attempts.", code_res or "Unknown")) ..
+                                         "\nMessage: " .. tostring(body_res) ..
+                                         "\n(URL: " .. self.BOT_SERVER_URL .. ")" ..
+                                         "\n\n" .. _("Would you like to retry?")
+                    end
+
+                    functions.showNetworkErrorDialog(
+                        self,
+                        dialog_title,
+                        dialog_message,
+                        function()
+                            sendHighlightToBot(self, instance, wifi_was_turned_on, 1) -- Reset attempts
+                        end,
+                        wifi_was_turned_on,
+                        close_instance
+                    )
                 end
-                UIManager:show(InfoMessage:new { title = err_title, text = err_text, timeout = 10 })
-                clearSelection()
-                UIManager:close(instance.highlight_dialog)
             end
         end
 
-        local resume_ok, err = coroutine.resume(co, handleResult)
+        local resume_ok, err_resume = coroutine.resume(co, handleResult)
         if not resume_ok then
-            logger.warn("Send to Bot: Coroutine failed to start:", err)
-            _hideProgress()
+            logger.warn("Send to Bot: Coroutine failed to start:", err_resume)
             UIManager:show(InfoMessage:new { title = _("Internal Error"), text = _("Failed to start sending process."), timeout = 5 })
-            clearSelection()
+            functions.handleWifiTurnOff( wifi_was_turned_on)
         end
-        functions.handleWifiTurnOff(self, was_wifi_turned_on)
     end
 
-    -- 5. Call the send request function
-    performSendRequest()
+    actual_perform_send_request()
 end
 
 return sendHighlightToBot

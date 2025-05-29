@@ -23,6 +23,7 @@ local TelegramHighlights = WidgetContainer:new {
 function TelegramHighlights:init()
     self.settings = G_reader_settings:readSetting("telegramhighlights") or {}
     self.verification_code = self.settings.verification_code or ""
+    self.turn_off_wifi_after_sending = self.settings.turn_off_wifi_after_sending or false
     self.settings.turn_off_wifi_after_sending = self.settings.turn_off_wifi_after_sending or false
     self.settings.send_screenshots_to_bot = self.settings.send_screenshots_to_bot or true
 
@@ -111,7 +112,8 @@ function TelegramHighlights:replaceScreenshotModule()
     local screenshot_params = {  
         prefix = prefix,  
         ui = self.ui,  
-        verification_code = self.verification_code,  
+        verification_code = self.verification_code,
+        turn_off_wifi_after_sending = self.settings.turn_off_wifi_after_sending
     }  
       
     -- Add extra parameters for ReaderUI  
