@@ -38,17 +38,52 @@ local function sendBookmarkToBot(self, bookmark_item, _current_attempt)
     end
 
     code = code:upper()
-
+    
     text = util.cleanupSelectedText(text)
     local file_path = self.ui.document.file
     local path, filename = util.splitFilePathName(file_path)
     local title = self.ui.doc_props and self.ui.doc_props.title or filename or _("Unknown Book")
     local author = self.ui.doc_props and self.ui.doc_props.authors or _("Unknown Author")
+    
+
+    local pos0, pos1, page, pageno, datetime, chapter  
+      
+    if bookmark_item then  
+        pos0 = bookmark_item.pos0  
+        pos1 = bookmark_item.pos1  
+        page = bookmark_item.page  
+        datetime = bookmark_item.datetime or os.date("!%Y-%m-%dT%H:%M:%SZ")  
+        chapter = bookmark_item.chapter  
+          
+        -- Extract page number based on document type  
+        if self.ui.paging then  
+            -- PDF documents: page number is directly available  
+            pageno = bookmark_item.page  
+        else  
+            -- EPUB documents: convert XPointer to page number  
+            pageno = self.ui.document:getPageFromXPointer(bookmark_item.page)  
+        end  
+          
+        -- Get chapter if not already available  
+        if not chapter and self.ui.toc then  
+            chapter = self.ui.toc:getTocTitleOfCurrentPage()  
+            if chapter == "" then  
+                chapter = nil  
+            end  
+        end  
+    end
+
     local payload = {
         code = code,
         text = text,
         title = title,
         author = author,
+        pos0 = pos0,
+        pos1 = pos1,
+        page = page,
+        pageno = pageno,
+        datetime = datetime,
+        chapter = chapter,
     }
 
     local ok_json, json_payload = pcall(JSON.encode, payload)
@@ -88,14 +123,6 @@ local function sendBookmarkToBot(self, bookmark_item, _current_attempt)
         end  
         return    
     end
-
-    -- if not NetworkMgr:isConnected() then  
-    --     logger.info("Send to Bot: Network not connected. Using WiFi action setting.")  
-    --     NetworkMgr:beforeWifiAction(function()  
-    --     end)  
-    --     return  
-    -- end
-    -- progress_widget = UIManager:show(InfoMessage:new{text = _("Sending bookmark..."), timeout = 0}) -- Optional progress
 
     local co = coroutine.create(function(handler_func)
         local request_url = self.BOT_SERVER_URL

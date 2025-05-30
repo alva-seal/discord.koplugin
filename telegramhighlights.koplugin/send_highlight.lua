@@ -31,6 +31,35 @@ local function sendHighlightToBot(self, instance,  _current_attempt)
         return
     end
 
+    local pos0, pos1, page, pageno, datetime  
+    local chapter
+    
+    if instance.selected_text then  
+        pos0 = instance.selected_text.pos0  
+        pos1 = instance.selected_text.pos1  
+        datetime = os.date("!%Y-%m-%dT%H:%M:%SZ") -- Current time in ISO format  
+          
+        -- Extract page number based on document type  
+        if self.ui.paging then  
+            -- PDF documents: page number is directly in pos0.page  
+            page = pos0.page  
+            pageno = pos0.page  
+        else  
+            -- EPUB documents: pos0 is XPointer, need to convert  
+            page = pos0  
+            pageno = self.ui.document:getPageFromXPointer(pos0)  
+        end  
+    end  
+
+    if pageno then
+        chapter = instance.ui.toc:getTocTitleOfCurrentPage() -- Use 'page' (raw reference) not 'pageno'
+        if chapter == "" then
+            chapter = nil
+        end
+    end
+
+    logger.info("chapter:",chapter, "Data: Text:", text, "Pos0:", pos0, "Pos1:", pos1, "Page:", page, "Pageno:", pageno, "Datetime:", datetime)
+
     local code = self.verification_code
     if code == "" then
         logger.warn("Send to Bot: Verification code is not set!")
@@ -55,6 +84,12 @@ local function sendHighlightToBot(self, instance,  _current_attempt)
         text = text,
         title = title,
         author = author,
+        pos0 = pos0,
+        pos1 = pos1,
+        page = page,
+        pageno = pageno,
+        datetime = datetime,
+        chapter = chapter
     }
 
     local ok_json, json_payload = pcall(JSON.encode, payload)
@@ -93,21 +128,6 @@ local function sendHighlightToBot(self, instance,  _current_attempt)
             end  
             return    
         end
-
-        -- if not NetworkMgr:isConnected() then  
-        --     logger.info("Send to Bot: Network not connected. Using WiFi action setting.")  
-        --     NetworkMgr:beforeWifiAction(function()  
-        --     end)  
-        --     return  
-        -- end
-
-        -- if not NetworkMgr:isConnected() then
-        --     logger.info("Send to Bot: Network not connected. Prompting for Wi-Fi.")
-        --     NetworkMgr:promptWifiOn(function()
-        --         sendHighlightToBot(self, instance, true, 1) -- Start fresh
-        --     end, _("Connect to Wi-Fi to send the highlight to the bot?"))
-        --     return
-        -- end
 
         if _current_attempt == 1 then
             UIManager:close(instance.highlight_dialog) -- Close dialog once action starts    
