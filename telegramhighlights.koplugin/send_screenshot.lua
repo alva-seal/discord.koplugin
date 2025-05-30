@@ -24,7 +24,11 @@ local function sendScreenshotToBot(plugin, screenshot_path, _current_attempt)
     end
     file_check:close() -- Close after check
 
-    if not plugin.verification_code or plugin.verification_code == "" then
+    -- get verification code from the settings 
+    local plugin_settings = G_reader_settings:readSetting("telegramhighlights")
+    local verification_code = plugin_settings["verification_code"]
+    logger.info("Send Screenshot: Verification code:", verification_code, "Attempt:", _current_attempt)
+    if not verification_code or verification_code == "" then
         UIManager:show(InfoMessage:new{
             title = _("Configuration Error"),
             text = _("Please set your verification code in the plugin settings."), timeout = 7,
@@ -49,7 +53,7 @@ local function sendScreenshotToBot(plugin, screenshot_path, _current_attempt)
         table.insert(body_parts, "--" .. boundary)
         table.insert(body_parts, 'Content-Disposition: form-data; name="code"')
         table.insert(body_parts, "")
-        table.insert(body_parts, plugin.verification_code:upper()) -- Ensure uppercase
+        table.insert(body_parts, verification_code:upper()) -- Ensure uppercase
         table.insert(body_parts, "--" .. boundary)
         table.insert(body_parts, 'Content-Disposition: form-data; name="image"; filename="screenshot.png"')
         table.insert(body_parts, "Content-Type: image/png")
