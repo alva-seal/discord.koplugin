@@ -12,7 +12,7 @@ Send book highlights and screenshots from KOReader to a Telegram bot [@bookshots
   - Delete duplicates on the miniapp with one click
   - Send bookmarks individually
 - **Auto turn on and turn off Wi-Fi after sending** (may not work on Android-based e-readers):
-  - Toggle this feature in the plugin’s settings
+  - Configure this setting in your koreader's settings -> network -> action when wifi is off / action when done with Wi-Fi
 - **Send screenshots to bot**
 
 ## Requirements
