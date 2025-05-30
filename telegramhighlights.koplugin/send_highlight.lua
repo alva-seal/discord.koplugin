@@ -14,10 +14,9 @@ local functions = require("functions")
 
 local MAX_AUTO_RETRIES = 2 -- Total 3 attempts: 1 initial + 2 retries
 
-local function sendHighlightToBot(self, instance, wifi_was_turned_on, _current_attempt)
+local function sendHighlightToBot(self, instance,  _current_attempt)
     _current_attempt = _current_attempt or 1
-    wifi_was_turned_on = wifi_was_turned_on or false
-
+ 
     local text
     local is_existing_highlight = instance.selected_link and instance.selected_link.note
     if is_existing_highlight then
@@ -28,7 +27,7 @@ local function sendHighlightToBot(self, instance, wifi_was_turned_on, _current_a
         logger.warn("Send to Bot: No text available.")
         UIManager:show(Notification:new { text = _("No text available.") })
 
-        functions.handleWifiTurnOff( wifi_was_turned_on)
+        functions.handleWifiTurnOff()
         return
     end
 
@@ -41,7 +40,7 @@ local function sendHighlightToBot(self, instance, wifi_was_turned_on, _current_a
             timeout = 7
         })
 
-        functions.handleWifiTurnOff( wifi_was_turned_on)
+        functions.handleWifiTurnOff()
         return
     end
     code = code:upper()
@@ -63,7 +62,7 @@ local function sendHighlightToBot(self, instance, wifi_was_turned_on, _current_a
         logger.warn("Send to Bot: Error encoding JSON payload:", json_payload)
         UIManager:show(InfoMessage:new { title = _("Send to Bot Error"), text = _("Failed to prepare data."), timeout = 5 })
 
-        functions.handleWifiTurnOff( wifi_was_turned_on)
+        functions.handleWifiTurnOff()
         return
     end
 
@@ -75,13 +74,40 @@ local function sendHighlightToBot(self, instance, wifi_was_turned_on, _current_a
         -- avoid calling on retries
 
 
-        if not NetworkMgr:isConnected() then
-            logger.info("Send to Bot: Network not connected. Prompting for Wi-Fi.")
-            NetworkMgr:promptWifiOn(function()
-                sendHighlightToBot(self, instance, true, 1) -- Start fresh
-            end, _("Connect to Wi-Fi to send the highlight to the bot?"))
-            return
+        if not NetworkMgr:isConnected() then    
+            logger.info("Send to Bot: Network not connected. Using WiFi action setting.")    
+              
+            -- Add error handling for LIPC issues  
+            local success, result = pcall(function()  
+                NetworkMgr:beforeWifiAction(function()    
+                    sendHighlightToBot(self, instance, 1) 
+                end)  
+            end)  
+              
+            if not success then  
+                logger.warn("WiFi action failed:", result)  
+                -- Fall back to manual prompt  
+                NetworkMgr:promptWifiOn(function()  
+                    sendHighlightToBot(self, instance, 1) 
+                end, _("Connect to Wi-Fi to send the screenshot?"))  
+            end  
+            return    
         end
+
+        -- if not NetworkMgr:isConnected() then  
+        --     logger.info("Send to Bot: Network not connected. Using WiFi action setting.")  
+        --     NetworkMgr:beforeWifiAction(function()  
+        --     end)  
+        --     return  
+        -- end
+
+        -- if not NetworkMgr:isConnected() then
+        --     logger.info("Send to Bot: Network not connected. Prompting for Wi-Fi.")
+        --     NetworkMgr:promptWifiOn(function()
+        --         sendHighlightToBot(self, instance, true, 1) -- Start fresh
+        --     end, _("Connect to Wi-Fi to send the highlight to the bot?"))
+        --     return
+        -- end
 
         if _current_attempt == 1 then
             UIManager:close(instance.highlight_dialog) -- Close dialog once action starts    
@@ -152,14 +178,14 @@ local function sendHighlightToBot(self, instance, wifi_was_turned_on, _current_a
 
             if success_res then
                 UIManager:show(Notification:new { text = _("Highlight sent successfully!"), timeout = 2 })
-                functions.handleWifiTurnOff( wifi_was_turned_on)
+                functions.handleWifiTurnOff()
                 instance:onClose()
             else
                 logger.warn("Send Highlight: Failed. Attempt:", _current_attempt, "Code:", code_res, "Body:", body_res)
                 if _current_attempt <= MAX_AUTO_RETRIES then
                     logger.info("Send Highlight: Scheduling automatic retry", _current_attempt + 1)
                     UIManager:scheduleIn(3, function()
-                        sendHighlightToBot(self, instance, wifi_was_turned_on, _current_attempt + 1)
+                        sendHighlightToBot(self, instance, _current_attempt + 1)
                     end)
                 else
                     logger.warn("Send Highlight: Max auto retries reached. Showing dialog.")
@@ -199,13 +225,11 @@ local function sendHighlightToBot(self, instance, wifi_was_turned_on, _current_a
                     end
 
                     functions.showNetworkErrorDialog(
-                        self,
                         dialog_title,
                         dialog_message,
                         function()
-                            sendHighlightToBot(self, instance, wifi_was_turned_on, 1) -- Reset attempts
+                            sendHighlightToBot(self, instance, 1) -- Reset attempts
                         end,
-                        wifi_was_turned_on,
                         close_instance
                     )
                 end
@@ -216,7 +240,7 @@ local function sendHighlightToBot(self, instance, wifi_was_turned_on, _current_a
         if not resume_ok then
             logger.warn("Send to Bot: Coroutine failed to start:", err_resume)
             UIManager:show(InfoMessage:new { title = _("Internal Error"), text = _("Failed to start sending process."), timeout = 5 })
-            functions.handleWifiTurnOff( wifi_was_turned_on)
+            functions.handleWifiTurnOff()
         end
     end
 

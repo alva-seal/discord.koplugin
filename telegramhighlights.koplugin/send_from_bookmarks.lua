@@ -14,15 +14,14 @@ local functions    = require("functions")
 
 local MAX_AUTO_RETRIES = 2 -- Total 3 attempts: 1 initial + 2 retries
 
-local function sendBookmarkToBot(self, bookmark_item, wifi_was_turned_on, _current_attempt)
+local function sendBookmarkToBot(self, bookmark_item, _current_attempt)
     _current_attempt = _current_attempt or 1
-    wifi_was_turned_on = wifi_was_turned_on or false
-
+  
     local text = bookmark_item.text_orig or bookmark_item.text
     if not text or text == "" then
         logger.warn("Send to Bot: No text available in bookmark.")
         UIManager:show(Notification:new { text = _("No text available in bookmark.") })
-        functions.handleWifiTurnOff( wifi_was_turned_on)
+        functions.handleWifiTurnOff()
         return
     end
 
@@ -34,7 +33,7 @@ local function sendBookmarkToBot(self, bookmark_item, wifi_was_turned_on, _curre
             text = _("Please set your verification code in the Telegram Highlights settings menu."),
             timeout = 7
         })
-        functions.handleWifiTurnOff( wifi_was_turned_on)
+        functions.handleWifiTurnOff()
         return
     end
 
@@ -56,7 +55,7 @@ local function sendBookmarkToBot(self, bookmark_item, wifi_was_turned_on, _curre
     if not ok_json then
         logger.warn("Send to Bot: Error encoding JSON payload:", json_payload)
         UIManager:show(InfoMessage:new { title = _("Send to Bot Error"), text = _("Failed to prepare data."), timeout = 5 })
-        functions.handleWifiTurnOff( wifi_was_turned_on)
+        functions.handleWifiTurnOff()
         return
     end
 
@@ -69,13 +68,33 @@ local function sendBookmarkToBot(self, bookmark_item, wifi_was_turned_on, _curre
         end
     end
 
-    if not NetworkMgr:isConnected() then
-        logger.info("Send to Bot: Network not connected. Prompting for Wi-Fi.")
-        NetworkMgr:promptWifiOn(function()
-            sendBookmarkToBot(self, bookmark_item, true, 1) -- Start fresh with wifi_was_turned_on = true
-        end, _("Connect to Wi-Fi to send the bookmark to the bot?"))
-        return
+
+    if not NetworkMgr:isConnected() then    
+        logger.info("Send to Bot: Network not connected. Using WiFi action setting.")    
+          
+        -- Add error handling for LIPC issues  
+        local success, result = pcall(function()  
+            NetworkMgr:beforeWifiAction(function()    
+                sendBookmarkToBot(self, bookmark_item, 1) -- Start fresh  
+            end)  
+        end)  
+          
+        if not success then  
+            logger.warn("WiFi action failed:", result)  
+            -- Fall back to manual prompt  
+            NetworkMgr:promptWifiOn(function()  
+                sendBookmarkToBot(self, bookmark_item, 1) -- Start fresh  
+            end, _("Connect to Wi-Fi to send the screenshot?"))  
+        end  
+        return    
     end
+
+    -- if not NetworkMgr:isConnected() then  
+    --     logger.info("Send to Bot: Network not connected. Using WiFi action setting.")  
+    --     NetworkMgr:beforeWifiAction(function()  
+    --     end)  
+    --     return  
+    -- end
     -- progress_widget = UIManager:show(InfoMessage:new{text = _("Sending bookmark..."), timeout = 0}) -- Optional progress
 
     local co = coroutine.create(function(handler_func)
@@ -152,13 +171,13 @@ local function sendBookmarkToBot(self, bookmark_item, wifi_was_turned_on, _curre
                 text = _("Bookmark Sent"),
                 timeout = 3,
             })
-            functions.handleWifiTurnOff( wifi_was_turned_on)
+            functions.handleWifiTurnOff()
         else
             logger.warn("Send to Bot: Failed. Attempt:", _current_attempt, "Code:", code_res, "Body:", body_res)
             if _current_attempt <= MAX_AUTO_RETRIES then
                 logger.info("Send to Bot: Scheduling automatic retry", _current_attempt + 1, "for bookmark.")
                 UIManager:scheduleIn(3, function() -- 3s delay for retry
-                    sendBookmarkToBot(self, bookmark_item, wifi_was_turned_on, _current_attempt + 1)
+                    sendBookmarkToBot(self, bookmark_item,  _current_attempt + 1)
                 end)
             else
                 logger.warn("Send to Bot: Max auto retries reached for bookmark. Showing dialog.")
@@ -197,13 +216,11 @@ local function sendBookmarkToBot(self, bookmark_item, wifi_was_turned_on, _curre
                 end
 
                 functions.showNetworkErrorDialog(
-                    self,
                     dialog_title,
                     dialog_message,
                     function()
-                        sendBookmarkToBot(self, bookmark_item, wifi_was_turned_on, 1) -- Reset attempts on manual retry
+                        sendBookmarkToBot(self, bookmark_item, 1) -- Reset attempts on manual retry
                     end,
-                    wifi_was_turned_on,
                     nil -- No custom cancel logic needed for bookmarks
                 )
             end
@@ -215,7 +232,7 @@ local function sendBookmarkToBot(self, bookmark_item, wifi_was_turned_on, _curre
         hideProgress()
         logger.warn("Send to Bot: Coroutine failed to start:", err_resume)
         UIManager:show(InfoMessage:new { title = _("Internal Error"), text = _("Failed to start sending process."), timeout = 5 })
-        functions.handleWifiTurnOff( wifi_was_turned_on)
+        functions.handleWifiTurnOff()
     end
 end
 

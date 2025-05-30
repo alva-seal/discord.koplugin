@@ -14,13 +14,12 @@ local util         = require("util")
 
 local MAX_AUTO_RETRIES = 2 -- Total 3 attempts: 1 initial + 2 retries
 
-local function sendBulkBookmarksToBot(self, items, wifi_was_turned_on, _current_attempt)
+local function sendBulkBookmarksToBot(self, items,  _current_attempt)
     _current_attempt = _current_attempt or 1
-    wifi_was_turned_on = wifi_was_turned_on or false
 
     if not items or #items == 0 then
         UIManager:show(Notification:new { text = _("No bookmarks selected to send."), timeout = 2 })
-        functions.handleWifiTurnOff( wifi_was_turned_on)
+        functions.handleWifiTurnOff()
         return
     end
 
@@ -36,7 +35,7 @@ local function sendBulkBookmarksToBot(self, items, wifi_was_turned_on, _current_
             text = _("Please set your verification code in the Telegram Highlights settings menu."),
             timeout = 7
         })
-        functions.handleWifiTurnOff( wifi_was_turned_on)
+        functions.handleWifiTurnOff()
         return
     end
     local verification_code = self.verification_code:upper()
@@ -53,7 +52,7 @@ local function sendBulkBookmarksToBot(self, items, wifi_was_turned_on, _current_
     if not ok_encode then
         logger.info("Failed to encode JSON payload for bulk send:", json_payload_or_err)
         UIManager:show(InfoMessage:new { title = _("Internal Error"), text = _("Failed to prepare data for sending."), timeout = 3 })
-        functions.handleWifiTurnOff( wifi_was_turned_on)
+        functions.handleWifiTurnOff()
         return
     end
     local json_payload = json_payload_or_err
@@ -61,7 +60,7 @@ local function sendBulkBookmarksToBot(self, items, wifi_was_turned_on, _current_
     local function actual_send_request()
         if not items or #items == 0 then -- Should have been caught earlier, but defensive
             UIManager:show(Notification:new { text = _("No bookmarks found"), timeout = 2 })
-            functions.handleWifiTurnOff( wifi_was_turned_on)
+            functions.handleWifiTurnOff()
             return
         end
 
@@ -91,13 +90,13 @@ local function sendBulkBookmarksToBot(self, items, wifi_was_turned_on, _current_
                 text = T(_("Successfully sent %1 bookmarks."), #items),
                 timeout = 3,
             })
-            functions.handleWifiTurnOff( wifi_was_turned_on)
+            functions.handleWifiTurnOff()
         else
             logger.warn("Bulk Send: Failed. Attempt:", _current_attempt, "pcall_success:", pcall_success, "HTTP Status:", result2_http_status, "Body:", response_body_str)
             if _current_attempt <= MAX_AUTO_RETRIES then
                 logger.info("Bulk Send: Scheduling automatic retry", _current_attempt + 1)
                 UIManager:scheduleIn(3, function()
-                    sendBulkBookmarksToBot(self, items, wifi_was_turned_on, _current_attempt + 1)
+                    sendBulkBookmarksToBot(self, items, _current_attempt + 1)
                 end)
             else
                 logger.warn("Bulk Send: Max auto retries reached. Showing dialog.")
@@ -134,24 +133,35 @@ local function sendBulkBookmarksToBot(self, items, wifi_was_turned_on, _current_
                     end
                 end
                 functions.showNetworkErrorDialog(
-                    self,
                     dialog_title,
                     dialog_message,
                     function()
-                        sendBulkBookmarksToBot(self, items, wifi_was_turned_on, 1) -- Reset attempts
+                        sendBulkBookmarksToBot(self, items,  1) -- Reset attempts
                     end,
-                    wifi_was_turned_on,
-                    nil
+                    nil 
                 )
             end
         end
     end
 
-    if not NetworkMgr:isConnected() then
-        NetworkMgr:promptWifiOn(function()
-            sendBulkBookmarksToBot(self, items, true, 1) -- Start fresh
-        end, _("Connect to Wi-Fi to send bookmarks to the bot?"))
-        return
+    if not NetworkMgr:isConnected() then    
+        logger.info("Send to Bot: Network not connected. Using WiFi action setting.")    
+          
+        -- Add error handling for LIPC issues  
+        local success, result = pcall(function()  
+            NetworkMgr:beforeWifiAction(function()    
+                sendBulkBookmarksToBot(self, items, 1) -- Start fresh  
+            end)  
+        end)  
+          
+        if not success then  
+            logger.warn("WiFi action failed:", result)  
+            -- Fall back to manual prompt  
+            NetworkMgr:promptWifiOn(function()  
+                sendBulkBookmarksToBot(self, items, 1) -- Start fresh  
+            end, _("Connect to Wi-Fi to send the screenshot?"))  
+        end  
+        return    
     end
 
     actual_send_request()

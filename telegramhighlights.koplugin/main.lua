@@ -17,14 +17,11 @@ local TelegramHighlights = WidgetContainer:new {
     name = "telegramhighlights",
     BOT_SERVER_URL = "https://koreader-plugin-bot-server.deno.dev/highlight",
     verification_code = "",
-    turn_off_wifi_after_sending = false
 }
 
 function TelegramHighlights:init()
     self.settings = G_reader_settings:readSetting("telegramhighlights") or {}
     self.verification_code = self.settings.verification_code or ""
-    self.turn_off_wifi_after_sending = self.settings.turn_off_wifi_after_sending or false
-    self.settings.turn_off_wifi_after_sending = self.settings.turn_off_wifi_after_sending or false
     self.settings.send_screenshots_to_bot = self.settings.send_screenshots_to_bot or true
 
     if self.ui and self.ui.menu then
@@ -113,7 +110,6 @@ function TelegramHighlights:replaceScreenshotModule()
         prefix = prefix,  
         ui = self.ui,  
         verification_code = self.verification_code,
-        turn_off_wifi_after_sending = self.settings.turn_off_wifi_after_sending
     }  
       
     -- Add extra parameters for ReaderUI  
@@ -136,7 +132,7 @@ function TelegramHighlights:extendHighlightMenu()
             enabled = (this.hold_pos ~= nil and has_selected_text) or is_existing_highlight,
             callback = function()
                 UIManager:scheduleIn(0, function()
-                    sendHighlightToBot(self, this, false)
+                    sendHighlightToBot(self, this)
                 end)
             end,
         }
@@ -147,7 +143,7 @@ function TelegramHighlights:extendHighlightMenu()
             enabled = this.hold_pos ~= nil and this.selected_text ~= nil and this.selected_text.text ~= "",
             callback = function()
                 UIManager:scheduleIn(0, function()
-                    saveAndSendHighlightToBot(self, this, false)
+                    saveAndSendHighlightToBot(self, this)
                 end)
             end,
         }
@@ -196,7 +192,7 @@ function TelegramHighlights:extendBookmarkSelectionMenu()
                                                     table.insert(selected_items, v)
                                                 end
                                             end
-                                            sendBulkBookmarksToBot(self, selected_items, false)
+                                            sendBulkBookmarksToBot(self, selected_items)
                                         end,
                                     })
                                     break
@@ -217,7 +213,7 @@ function TelegramHighlights:extendBookmarkSelectionMenu()
                                             enabled = #menu_self.item_table > 0,
                                             callback = function()
                                                 -- Don't close the dialog
-                                                sendBulkBookmarksToBot(self, menu_self.item_table, false)
+                                                sendBulkBookmarksToBot(self, menu_self.item_table)
                                             end,
                                         },
                                     })
@@ -282,7 +278,7 @@ function TelegramHighlights:extendBookmarkDetails()
                             text = _("Send to Bot"),
                             callback = function()
                                 -- Don't close the TextViewer, just send the bookmark
-                                sendBookmarkToBot(self, item, false)
+                                sendBookmarkToBot(self, item)
                             end,
                         })
                     end
@@ -359,22 +355,6 @@ function TelegramHighlights:addToMainMenu(menu_items)
                         text = self.settings.send_screenshots_to_bot and
                             _("Send to bot option enabled on screenshots") or
                             _("Send to bot option disabled on screenshots"),
-                        timeout = 2,
-                    })
-                end,
-            },
-            {
-                text = _("Turn off WiFi after sending"),
-                checked_func = function()
-                    return self.settings.turn_off_wifi_after_sending
-                end,
-                callback = function()
-                    self.settings.turn_off_wifi_after_sending = not self.settings.turn_off_wifi_after_sending
-                    G_reader_settings:saveSetting("telegramhighlights", self.settings)
-                    UIManager:show(Notification:new {
-                        text = self.settings.turn_off_wifi_after_sending and
-                            _("WiFi will be turned off after sending.") or
-                            _("WiFi will remain on after sending."),
                         timeout = 2,
                     })
                 end,

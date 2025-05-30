@@ -11,16 +11,15 @@ local T = require("ffi/util").template -- Added for translation with parameters
 
 local MAX_AUTO_RETRIES = 2 -- Total 3 attempts: 1 initial + 2 retries
 
-local function sendScreenshotToBot(plugin, screenshot_path, wifi_was_turned_on, _current_attempt)
+local function sendScreenshotToBot(plugin, screenshot_path, _current_attempt)
     _current_attempt = _current_attempt or 1
-    wifi_was_turned_on = wifi_was_turned_on or false
 
     local file_check = io.open(screenshot_path, "rb")
     if not file_check then
         UIManager:show(InfoMessage:new{
             text = _("Screenshot file not found."), timeout = 3,
         })
-        functions.handleWifiTurnOff(wifi_was_turned_on)
+        functions.handleWifiTurnOff()
         return
     end
     file_check:close() -- Close after check
@@ -30,7 +29,7 @@ local function sendScreenshotToBot(plugin, screenshot_path, wifi_was_turned_on, 
             title = _("Configuration Error"),
             text = _("Please set your verification code in the plugin settings."), timeout = 7,
         })
-        functions.handleWifiTurnOff(wifi_was_turned_on)
+        functions.handleWifiTurnOff()
         return
     end
 
@@ -39,7 +38,7 @@ local function sendScreenshotToBot(plugin, screenshot_path, wifi_was_turned_on, 
         if not file_send then -- Re-check, though unlikely to fail if first check passed
             logger.error("Send Screenshot: File disappeared before sending:", screenshot_path)
             UIManager:show(InfoMessage:new{ text = _("Screenshot file error."), timeout = 3})
-            functions.handleWifiTurnOff(wifi_was_turned_on)
+            functions.handleWifiTurnOff()
             return
         end
         local image_data = file_send:read("*all")
@@ -82,13 +81,13 @@ local function sendScreenshotToBot(plugin, screenshot_path, wifi_was_turned_on, 
                 text = _("Screenshot sent successfully!"),
                 timeout = 3,
             })
-            functions.handleWifiTurnOff(wifi_was_turned_on)
+            functions.handleWifiTurnOff()
         else
             logger.warn("Send Screenshot: Failed. Attempt:", _current_attempt, "pcall_ok:", pcall_ok, "HTTP Status:", http_status_code, "Body:", response_body_concat)
             if _current_attempt <= MAX_AUTO_RETRIES then
                 logger.info("Send Screenshot: Scheduling automatic retry", _current_attempt + 1)
                 UIManager:scheduleIn(3, function()
-                    sendScreenshotToBot(plugin, screenshot_path, wifi_was_turned_on, _current_attempt + 1)
+                    sendScreenshotToBot(plugin, screenshot_path,  _current_attempt + 1)
                 end)
             else
                 logger.warn("Send Screenshot: Max auto retries reached. Showing dialog.")
@@ -131,28 +130,37 @@ local function sendScreenshotToBot(plugin, screenshot_path, wifi_was_turned_on, 
                 end
 
                 functions.showNetworkErrorDialog(
-                    plugin,
                     dialog_title,
                     dialog_message,
                     function()
-                        sendScreenshotToBot(plugin, screenshot_path, wifi_was_turned_on, 1) -- Reset attempts for manual retry
+                        sendScreenshotToBot(plugin, screenshot_path,  1) -- Reset attempts for manual retry
                     end,
-                    wifi_was_turned_on,
                     nil -- No custom cancel logic for screenshot
                 )
-
-                
-
             end
         end
     end
 
-    if not NetworkMgr:isConnected() then
-        NetworkMgr:promptWifiOn(function()
-            sendScreenshotToBot(plugin, screenshot_path, true, 1) -- Start fresh
-        end, _("Connect to Wi-Fi to send the screenshot?"))
-        return
-    end 
+
+    if not NetworkMgr:isConnected() then    
+        logger.info("Send to Bot: Network not connected. Using WiFi action setting.")    
+          
+        -- Add error handling for LIPC issues  
+        local success, result = pcall(function()  
+            NetworkMgr:beforeWifiAction(function()    
+                sendScreenshotToBot(plugin, screenshot_path,  1) 
+            end)  
+        end)  
+          
+        if not success then  
+            logger.warn("WiFi action failed:", result)  
+            -- Fall back to manual prompt  
+            NetworkMgr:promptWifiOn(function()  
+                sendScreenshotToBot(plugin, screenshot_path,  1) 
+            end, _("Connect to Wi-Fi to send the screenshot?"))  
+        end  
+        return    
+    end
 
     actual_send_logic()
 end

@@ -103,7 +103,7 @@ function Screenshoter:onScreenshot(screenshot_name, caller_callback)
             {
                 text = _("Send To Bot"),
                 callback = function()
-                    sendScreenshotToBot(self, screenshot_name, false)
+                    sendScreenshotToBot(self, screenshot_name)
                     dialog:onClose()
                 end,
             },
