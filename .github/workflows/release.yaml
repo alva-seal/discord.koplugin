@@ -24,8 +24,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          name: Telegram Highlights Plugin for KOReader ${{ github.ref_name }}
+          name: Discord Highlights Plugin for KOReader ${{ github.ref_name }}
           tag_name: ${{ github.ref }}
-          files: build/telegramhighlights.koplugin.zip
+          files: build/discordhighlights.koplugin.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
