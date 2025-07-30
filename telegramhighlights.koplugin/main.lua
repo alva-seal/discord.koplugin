@@ -13,13 +13,12 @@ local sendBookmarkToBot = require("send_from_bookmarks")
 local sendBulkBookmarksToBot = require("send_from_bookmarks_bulk")
 local Screenshoter = require("custom_screenshot")
 
-local TelegramHighlights = WidgetContainer:new {
-    name = "telegramhighlights",
-    BOT_SERVER_URL = "https://koreader-plugin-bot-server.deno.dev/highlight",
-    verification_code = "",
+local DiscordHighlights = WidgetContainer:new {
+    name = "discordhighlights",
+    webhook = "https://discord.com/api/webhooks/"
 }
 
-function TelegramHighlights:init()
+function DiscordHighlights:init()
     self.settings = G_reader_settings:readSetting("telegramhighlights") or {}
     self.verification_code = self.settings.verification_code or ""
     self.settings.send_screenshots_to_bot = self.settings.send_screenshots_to_bot or true
@@ -68,7 +67,7 @@ function TelegramHighlights:init()
     
 end
 
-function TelegramHighlights:replaceScreenshotModule() 
+function DiscordHighlights:replaceScreenshotModule() 
     if not self.ui or not self.ui.screenshot then  
         return  
     end  
@@ -109,7 +108,7 @@ function TelegramHighlights:replaceScreenshotModule()
     local screenshot_params = {  
         prefix = prefix,  
         ui = self.ui,  
-        verification_code = self.verification_code,
+        webhook = self.webhook,
     }  
       
     -- Add extra parameters for ReaderUI  
@@ -122,7 +121,7 @@ end
 
 
 
-function TelegramHighlights:extendHighlightMenu()
+function DiscordHighlights:extendHighlightMenu()
     if not self.ui or not self.ui.highlight then return end
     self.ui.highlight:addToHighlightDialog("13_send_to_bot", function(this)
         local is_existing_highlight = this.selected_link and this.selected_link.note
@@ -151,7 +150,7 @@ function TelegramHighlights:extendHighlightMenu()
 end
 
 
-function TelegramHighlights:extendBookmarkSelectionMenu()
+function DiscordHighlights:extendBookmarkSelectionMenu()
     if not self.ui or not self.ui.bookmark then return end
 
     -- Store original onLeftButtonTap function to extend it
@@ -239,7 +238,7 @@ function TelegramHighlights:extendBookmarkSelectionMenu()
     end
 end
 
-function TelegramHighlights:extendBookmarkDetails()
+function DiscordHighlights:extendBookmarkDetails()
     if not self.ui or not self.ui.bookmark then return end
 
     -- Store the original function
@@ -302,20 +301,20 @@ function TelegramHighlights:extendBookmarkDetails()
     end
 end
 
-function TelegramHighlights:addToMainMenu(menu_items)
-    menu_items.telegramhighlights = {
-        text = _("Telegram Highlights"),
+function DiscordHighlights:addToMainMenu(menu_items)
+    menu_items.discordhighlights = {
+        text = _("Discord Highlights"),
         sorting_hint = "tools",
         sub_item_table = {
             {
-                text = _("Set verification code"),
+                text = _("Set Discord Webhook"),
                 keep_menu_open = true,
                 callback = function()
                     local password_dialog
                     password_dialog = InputDialog:new {
-                        title = _("Telegram Bot Verification Code"),
-                        input = self.verification_code,
-                        description = _("Enter the verification code you received from @bookshotsbot"),
+                        title = _("Discord Webhook"),
+                        input = self.webhook,
+                        description = _("Enter the Discord Webhook you created in your Discord server"),
                         buttons = { {
                             {
                                 text = _("Cancel"),
@@ -327,12 +326,12 @@ function TelegramHighlights:addToMainMenu(menu_items)
                             {
                                 text = _("Save"),
                                 callback = function()
-                                    self.verification_code = password_dialog:getInputText()
-                                    self.settings.verification_code = self.verification_code
-                                    G_reader_settings:saveSetting("telegramhighlights", self.settings)
+                                    self.webhook = password_dialog:getInputText()
+                                    self.webhook = self.webhook
+                                    G_reader_settings:saveSetting("discordhighlights", self.settings)
                                     UIManager:close(password_dialog)
                                     UIManager:show(Notification:new {
-                                        text = _("Verification code saved."),
+                                        text = _("Discord Webhook saved."),
                                         timeout = 2,
                                     })
                                 end,
@@ -350,7 +349,7 @@ function TelegramHighlights:addToMainMenu(menu_items)
                 end,
                 callback = function()
                     self.settings.send_screenshots_to_bot = not self.settings.send_screenshots_to_bot
-                    G_reader_settings:saveSetting("telegramhighlights", self.settings)
+                    G_reader_settings:saveSetting("discordhighlights", self.settings)
                     UIManager:show(Notification:new {
                         text = self.settings.send_screenshots_to_bot and
                             _("Send to bot option enabled on screenshots") or
@@ -360,11 +359,11 @@ function TelegramHighlights:addToMainMenu(menu_items)
                 end,
             },
             {
-                text = _("About Telegram Highlights"),
+                text = _("About Discord Highlights"),
                 keep_menu_open = true,
                 callback = function()
                     UIManager:show(InfoMessage:new {
-                        text = _("Telegram Highlights allows you to send book highlights to a Telegram bot.\n\nTo use this plugin:\n1. Start a chat with @bookshotsbot on Telegram\n2. Get your verification code\n3. Enter the code in the plugin settings\n4. Select text in a book and use 'Send to Bot' from the highlight menu\n"),
+                        text = _("Discord Highlights allows you to send book highlights to a Discord Server .\n\nTo use this plugin:\n1. Create an Webhook in a channel of a discord verver \n"),
                     })
                 end,
             },
@@ -372,4 +371,4 @@ function TelegramHighlights:addToMainMenu(menu_items)
     }
 end
 
-return TelegramHighlights
+return DiscordHighlights
