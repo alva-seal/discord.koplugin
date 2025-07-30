@@ -1,6 +1,6 @@
 local _ = require("gettext")
 return {
-    name = "telegramhighlights",
-    fullname = _("Telegram Highlights"),
-    description = _([[Send book highlights to a Telegram bot using @bookshotsbot]])
+    name = "discordhighlights",
+    fullname = _("Discord Highlights"),
+    description = _([[Send book highlights to a Discord Webhook]])
 }
